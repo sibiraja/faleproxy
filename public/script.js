@@ -59,11 +59,40 @@ document.addEventListener('DOMContentLoaded', () => {
             iframe.onload = function() {
                 iframe.style.height = iframeDocument.body.scrollHeight + 'px';
                 
-                // Make sure links open in a new tab
+                // Intercept clicks on links to route through the proxy
                 const links = iframeDocument.querySelectorAll('a');
                 links.forEach(link => {
-                    link.target = '_blank';
-                    link.rel = 'noopener noreferrer';
+                    // Remove any existing click listeners
+                    link.removeAttribute('target');
+                    link.removeAttribute('rel');
+                    
+                    // Add click event listener
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        let href = this.getAttribute('href');
+                        
+                        // Handle relative URLs
+                        if (href && !href.startsWith('http') && !href.startsWith('//')) {
+                            // If it starts with '/', it's relative to the domain root
+                            if (href.startsWith('/')) {
+                                const urlObj = new URL(url);
+                                href = `${urlObj.protocol}//${urlObj.hostname}${href}`;
+                            } else {
+                                // It's relative to the current path
+                                href = new URL(href, url).href;
+                            }
+                        }
+                        
+                        // If it's a fragment or javascript:void, don't process
+                        if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+                            return;
+                        }
+                        
+                        // Set the input value and trigger a form submission
+                        urlInput.value = href;
+                        urlForm.dispatchEvent(new Event('submit'));
+                    });
                 });
             };
             
